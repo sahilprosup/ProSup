@@ -2,7 +2,7 @@
 
 Single-file HTML web app (no build step) for browsing suppliers, filing quotes/invoices/data sheets, comparing prices, and an AI assistant that answers questions from filed documents. Used internally by Proline Metal Cladding / Proline Facades / Proline Fabrication.
 
-- **Live site:** https://prosupp.netlify.app/
+- **Live site:** https://prosup-jet.vercel.app/
 - **Main file:** `index.html` — this is the entire app (HTML/CSS/JS in one file). `supplier-directory.html` is an identical mirror kept in sync alongside it.
 - **Backend:** Supabase project `ceujwwyciamljjgfygyd`
 - **Admin login:** sahil@prolinegroup.au
