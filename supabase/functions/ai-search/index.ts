@@ -82,6 +82,25 @@ Deno.serve(async (req: Request) => {
 
     async function fetchDocs(): Promise<any[]> {
       if (keywords.length > 0) {
+        // Strict pass: a doc must contain EVERY keyword somewhere (AND across
+        // keywords, OR across columns per keyword — chaining .or() calls ANDs
+        // the OR-groups together). This is what keeps a specific question like
+        // "how much for black silicone" from pulling in every other silicone
+        // colour just because they all contain the word "silicone".
+        let strictQuery = supabase
+          .from("document_search_index")
+          .select("kind, company, file_name, extracted_text")
+          .order("created_at", { ascending: false })
+          .limit(DOC_LIMIT);
+        for (const k of keywords) {
+          strictQuery = strictQuery.or(`extracted_text.ilike.%${k}%,company.ilike.%${k}%,file_name.ilike.%${k}%`);
+        }
+        const { data: strictData } = await strictQuery;
+        if (strictData && strictData.length > 0) return strictData;
+
+        // Loosen only if the strict AND pass found nothing at all — any
+        // single keyword match, so a broad/generic question still surfaces
+        // multiple options instead of an empty result.
         const orFilter = keywords
           .map((k) => `extracted_text.ilike.%${k}%,company.ilike.%${k}%,file_name.ilike.%${k}%`)
           .join(",");
@@ -138,7 +157,13 @@ Deno.serve(async (req: Request) => {
 
 Answer ONLY using the DOCUMENTS and SUPPLIER LIST below — never guess or invent a price, number, or date. The DOCUMENTS below have already been pre-filtered to the ones most likely relevant to this question, out of a larger archive.
 
-CRITICAL: When you find the answer — whether it's a price, an invoice/reference number, a date, a quantity, or any other specific detail — state it directly and exactly in your answer sentence (e.g. "Black silicone from Soudal is $14.20 per tube, ex GST" or "That invoice's reference number is 00476161, dated 12-Jun-2026"). Never just tell the user to go check a document or a section of the app instead of answering — the written answer must already contain the concrete information. If multiple relevant results exist across different companies or documents, list each one clearly, still inside the "answer" text itself. The "matches" you return are only a convenience shortcut so the user can open the source file to verify — they are not a substitute for answering in words.
+CRITICAL: When you find the answer — whether it's a price, an invoice/reference number, a date, a quantity, or any other specific detail — state it directly and exactly in your answer sentence (e.g. "Black silicone from Soudal is $14.20 per tube, ex GST" or "That invoice's reference number is 00476161, dated 12-Jun-2026"). Never just tell the user to go check a document or a section of the app instead of answering — the written answer must already contain the concrete information. This app never opens or displays the source PDF from this assistant — your written answer is the only place the user will ever see the information, so it must be complete on its own.
+
+SPECIFIC vs BROAD questions: if the question names a specific variant, colour, size, or type (e.g. "black silicone"), answer and list matches for ONLY that specific item — do not mention or include other variants of the same product (e.g. don't bring up Jasper or Midnight when asked about black) unless the user asked broadly (e.g. "how much for silicone?"). For a broad question, list each distinct option you found clearly inside the "answer" text itself, so the user can see the choices and ask a tighter follow-up.
+
+NEVER include banking details, account numbers, BSB numbers, IBAN/SWIFT codes, or any other payment-account information in your answer, even if they appear in a document — pricing, reference numbers, dates and quantities are fine to state, financial account details are not.
+
+The "matches" you return are the specific items your answer is about — the app uses them to offer one-tap follow-up questions for a more precise price, not to open the source document.
 
 If truly nothing relevant is found in the documents below, say so plainly and suggest checking the Quotes or Data Sheets section directly.
 
