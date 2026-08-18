@@ -77,8 +77,8 @@ Deno.serve(async (req: Request) => {
     // sheets get added over time, and gives the model a smaller, more
     // relevant haystack to answer from. ----
     const keywords = extractKeywords(question);
-    const DOC_LIMIT = 30;
-    const MAX_CHARS_PER_DOC = 1500; // keep the prompt lean so the model responds faster
+    const DOC_LIMIT = 60;
+    const MAX_CHARS_PER_DOC = 4000; // generous enough that pricing further down a long doc isn't cut off
 
     async function fetchDocs(): Promise<any[]> {
       if (keywords.length > 0) {
@@ -162,7 +162,7 @@ ${docsContext}`;
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 450,
+        max_tokens: 1200,
         system: systemPrompt,
         messages: [{ role: "user", content: question }],
       }),
