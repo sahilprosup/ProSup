@@ -77,8 +77,8 @@ Deno.serve(async (req: Request) => {
     // sheets get added over time, and gives the model a smaller, more
     // relevant haystack to answer from. ----
     const keywords = extractKeywords(question);
-    const DOC_LIMIT = 60;
-    const MAX_CHARS_PER_DOC = 4000; // generous enough that pricing further down a long doc isn't cut off
+    const DOC_LIMIT = 40;
+    const MAX_CHARS_PER_DOC = 2200; // enough headroom for pricing further down a doc, without ballooning the prompt (and the latency) on every request
 
     async function fetchDocs(): Promise<any[]> {
       if (keywords.length > 0) {
