@@ -167,7 +167,7 @@ The "matches" you return are the specific items your answer is about — the app
 
 If truly nothing relevant is found in the documents below, say so plainly and suggest checking the Quotes or Data Sheets section directly.
 
-Respond with ONLY a JSON object, no other text, in this exact shape:
+Respond with ONLY a JSON object, no other text, in this exact shape. Do NOT wrap it in a markdown code fence or backticks, and do not add any commentary before or after it — the very first character of your reply must be {:
 {"answer": "<a short, direct, spoken-style answer, citing specific prices and companies>", "matches": [{"company": "...", "file_name": "...", "kind": "quote|invoice|datasheet"}]}
 
 If nothing matches, return {"answer": "...", "matches": []}.
@@ -204,9 +204,16 @@ ${docsContext}`;
     const data = await resp.json();
     const rawText = data?.content?.[0]?.text || "";
 
+    // The model is told to respond with ONLY a JSON object, but sometimes
+    // wraps it in a markdown code fence anyway (```json ... ```) — strip
+    // that off before parsing so a fenced-but-otherwise-valid reply doesn't
+    // fall through to dumping the raw fenced text as the answer.
+    const fenceMatch = rawText.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    const jsonText = fenceMatch ? fenceMatch[1] : rawText;
+
     let parsed;
     try {
-      parsed = JSON.parse(rawText);
+      parsed = JSON.parse(jsonText);
     } catch {
       parsed = { answer: rawText, matches: [] };
     }
