@@ -32,12 +32,14 @@ Deno.serve(async (req: Request) => {
     const { message, history } = await req.json();
 
     if (!message || typeof message !== "string") {
+      console.error("[app-help-chat] rejected: no message");
       return new Response(JSON.stringify({ reply: null, reason: "No message." }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
 
     if (!ANTHROPIC_API_KEY) {
+      console.error("[app-help-chat] rejected: no ANTHROPIC_API_KEY secret set on this project");
       return new Response(JSON.stringify({ reply: null, reason: "No ANTHROPIC_API_KEY set." }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
@@ -68,6 +70,7 @@ Deno.serve(async (req: Request) => {
 
     if (!resp.ok) {
       const errText = await resp.text();
+      console.error("[app-help-chat] Anthropic call failed, status=" + resp.status + " body=" + errText.slice(0, 500));
       return new Response(JSON.stringify({ reply: null, reason: "AI call failed: " + errText }), {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
@@ -76,10 +79,17 @@ Deno.serve(async (req: Request) => {
     const data = await resp.json();
     const reply = data?.content?.[0]?.text || null;
 
+    if (!reply) {
+      console.error("[app-help-chat] no reply text extracted, raw response=" + JSON.stringify(data).slice(0, 800));
+    } else {
+      console.log("[app-help-chat] ok, reply length=" + reply.length);
+    }
+
     return new Response(JSON.stringify({ reply }), {
       headers: { ...CORS, "Content-Type": "application/json" },
     });
   } catch (e) {
+    console.error("[app-help-chat] exception: " + String(e) + (e && (e as any).stack ? ("\n" + (e as any).stack) : ""));
     return new Response(JSON.stringify({ reply: null, reason: String(e) }), {
       status: 200,
       headers: { ...CORS, "Content-Type": "application/json" },
