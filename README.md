@@ -27,6 +27,15 @@ There is currently **no live-override mechanism for moving a legacy file between
 
 On page load, `syncWithServer()` merges: embedded legacy data → apply `edited_suppliers` / `renamed_items` overrides → filter out anything in `deleted_items` → merge in real DB rows (suppliers, quote_files, invoice_files, data_sheet_files, sales_confirmation_files).
 
+## Landing page live supplier count
+
+The signed-out landing page (`#landingRoot`, desktop only) shows a "Suppliers on file" stat that updates itself automatically, with no login and no page reload, whenever a supplier is added or removed anywhere in the system:
+
+- `public.get_landing_stats()` (SQL function, `SECURITY DEFINER`, `EXECUTE` granted to `anon`) returns `{"suppliers": N}`, computed as `375 - (tombstoned legacy suppliers in deleted_items) + (rows in public.suppliers)`. `375` is the number of legacy suppliers embedded in `index.html`'s `const suppliers = [...]` array — **if that array's length changes (bulk legacy edit + redeploy), update the constant inside `get_landing_stats()` in the DB to match**, or the count will drift.
+- Triggers on `public.suppliers` (insert/delete) and `public.deleted_items` (insert/delete where `kind = 'supplier'`) call `public.broadcast_landing_stats()`, which re-runs `get_landing_stats()` and pushes the result over the public (non-private, no-auth-required) Realtime broadcast topic `landing-stats`, event `stats`.
+- The landing page calls `get_landing_stats()` once on load for the initial number, then subscribes to the `landing-stats` broadcast channel to keep it live.
+- This intentionally does **not** expose any row-level supplier data to signed-out visitors — only the aggregate count, via a `SECURITY DEFINER` function and a broadcast payload that only ever carries the count.
+
 ## Supabase project reference
 
 **Project ID:** `ceujwwyciamljjgfygyd`
