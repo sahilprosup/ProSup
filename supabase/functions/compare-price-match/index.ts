@@ -78,9 +78,17 @@ Respond with ONLY a JSON array of the matching ids as strings, e.g. ["id1","id2"
 
     const data = await resp.json();
     const rawText = data?.content?.[0]?.text || "[]";
+    // The model is told to respond with ONLY a JSON array, but sometimes
+    // wraps it in a markdown code fence anyway (```json ... ```) — strip
+    // that off before parsing, same as ai-search does for its replies.
+    // Without this, a fenced reply silently parses to an empty array
+    // (caught below) instead of null, so the frontend treats it as a
+    // confirmed "no matches" instead of falling back to local matching.
+    const fenceMatch = rawText.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    const jsonText = fenceMatch ? fenceMatch[1] : rawText;
     let ids: string[] = [];
     try {
-      const parsed = JSON.parse(rawText);
+      const parsed = JSON.parse(jsonText);
       if (Array.isArray(parsed)) ids = parsed.map(String);
     } catch {
       ids = [];

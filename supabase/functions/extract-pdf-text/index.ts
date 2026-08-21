@@ -144,9 +144,14 @@ ${extractedText}`;
         if (priceResp.ok) {
           const priceData = await priceResp.json();
           const rawLines = priceData?.content?.[0]?.text || "[]";
+          // The model is told to respond with ONLY a JSON array, but sometimes
+          // wraps it in a markdown code fence anyway (```json ... ```) — strip
+          // that off before parsing, same as ai-search does for its replies.
+          const fenceMatch = rawLines.trim().match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+          const linesJsonText = fenceMatch ? fenceMatch[1] : rawLines;
           let lines: any[] = [];
           try {
-            lines = JSON.parse(rawLines);
+            lines = JSON.parse(linesJsonText);
           } catch {
             lines = [];
           }
