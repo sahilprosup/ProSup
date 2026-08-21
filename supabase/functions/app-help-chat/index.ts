@@ -29,7 +29,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { message, history } = await req.json();
+    const { message, history, language } = await req.json();
 
     if (!message || typeof message !== "string") {
       return new Response(JSON.stringify({ reply: null, reason: "No message." }), {
@@ -42,6 +42,12 @@ Deno.serve(async (req: Request) => {
         headers: { ...CORS, "Content-Type": "application/json" },
       });
     }
+
+    const LANGUAGE_NAMES: Record<string, string> = {
+      en: "English", ja: "Japanese", fr: "French", vi: "Vietnamese", zh: "Chinese", es: "Spanish",
+    };
+    const languageName = LANGUAGE_NAMES[(language || "en").toString().trim()] || "English";
+    const systemPrompt = `${SYSTEM_PROMPT}\n\nLANGUAGE: Reply in ${languageName}, regardless of what language the question was asked in.`;
 
     const priorTurns = Array.isArray(history) ? history.slice(-8) : [];
     const messages = [
@@ -61,7 +67,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 400,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages,
       }),
     });

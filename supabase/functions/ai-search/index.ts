@@ -50,6 +50,12 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const question = (body?.question || "").toString().trim();
 
+    const LANGUAGE_NAMES: Record<string, string> = {
+      en: "English", ja: "Japanese", fr: "French", vi: "Vietnamese", zh: "Chinese", es: "Spanish",
+    };
+    const languageCode = (body?.language || "en").toString().trim();
+    const languageName = LANGUAGE_NAMES[languageCode] || "English";
+
     if (!question) {
       return new Response(JSON.stringify({ answer: "Ask me something like \"how much for silicone?\"", matches: [] }), {
         headers: { ...CORS, "Content-Type": "application/json" },
@@ -166,6 +172,8 @@ NEVER include banking details, account numbers, BSB numbers, IBAN/SWIFT codes, o
 The "matches" you return are the specific items your answer is about — the app uses them to offer one-tap follow-up questions for a more precise price, not to open the source document.
 
 If truly nothing relevant is found in the documents below, say so plainly and suggest checking the Quotes or Data Sheets section directly.
+
+LANGUAGE: Write the "answer" text in ${languageName}, regardless of what language the question was asked in. Keep company names, product/brand names, and file names exactly as they appear in the source documents — do not translate proper nouns. Numbers, prices, dates, and reference/invoice numbers must also stay exactly as written in the source, only formatted naturally for ${languageName}.
 
 Respond with ONLY a JSON object, no other text, in this exact shape. Do NOT wrap it in a markdown code fence or backticks, and do not add any commentary before or after it — the very first character of your reply must be {:
 {"answer": "<a short, direct, spoken-style answer, citing specific prices and companies>", "matches": [{"company": "...", "file_name": "...", "kind": "quote|invoice|datasheet"}]}
